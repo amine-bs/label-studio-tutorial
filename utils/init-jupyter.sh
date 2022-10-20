@@ -6,8 +6,8 @@ REPO_URL=https://github.com/amine-bs/label-studio-tutorial.git
 git clone --depth 1 $REPO_URL $CLONE_DIR
 
 # Put chapter data in the training dir
-cp ${CLONE_DIR}/tutorial.ipynb ${WORK_DIR}/
-cp -r ${CLONE_DIR}/notebook-img ${WORK_DIR}/
+rm -r ${CLONE_DIR}/utils
+cp -r ${CLONE_DIR}/* ${WORK_DIR}/
 
 # Give write permissions
 chown -R onyxia:users $WORK_DIR/
