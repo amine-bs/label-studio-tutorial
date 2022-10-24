@@ -44,13 +44,16 @@ def load_image(url):
     return image_transforms(img)
 
 def import_model(model, path="mbenxsalha/diffusion/state_dict.pickle"):
-    bucket = path.split("/")[0]
-    key = '/'.join(path.split("/")[1:])
-    endpoint_url = os.environ["S3_ENDPOINT"]
-    s3 = boto3.client('s3',endpoint_url="https://minio.lab.sspcloud.fr")
-    data = s3.get_object(Bucket=bucket, Key=key)
-    state_dict = pickle.loads(data['Body'].read())
-    model.load_state_dict(state_dict)
+    if path.endswith("pickle"):
+        bucket = path.split("/")[0]
+        key = '/'.join(path.split("/")[1:])
+        endpoint_url = os.environ["S3_ENDPOINT"]
+        s3 = boto3.client('s3',endpoint_url="https://minio.lab.sspcloud.fr")
+        data = s3.get_object(Bucket=bucket, Key=key)
+        state_dict = pickle.loads(data['Body'].read())
+        model.load_state_dict(state_dict)
+    else:
+        model.load_state_dict(torch.load(path))
     model.eval()
     return model
 
@@ -98,11 +101,10 @@ class ImageClassifier(object):
         self.model.to(device)
     
     def save(self, path):
-        torch.save(self.model.load_state_dict(), path)
+        torch.save(self.model.state_dict(), path)
         
     def load(self, path):
-        self.model.load_state_dict(torch.load(path))
-        self.model.eval()
+        self.model = import_model(self.model, path)
         
     def predict(self, image_urls):
         imgs = torch.stack([load_image(image_url) for image_url in image_urls], dim=0)
@@ -127,7 +129,7 @@ class ImageClassifier(object):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
-                self.optimizer.zero_grad()
+                optimizer.zero_grad()
                 outputs = self.model(inputs)
                 _, preds = torch.max(outputs, 1)
                 loss = criterion(outputs, labels)
@@ -154,7 +156,6 @@ class ImageClassifierAPI(LabelStudioMLBase):
         self.from_name, self.to_name, self.value, self.classes = get_single_tag_keys(
             self.parsed_label_config, 'Choices', 'Image')
         if self.train_output:
-            self.classes = self.train_output['classes']
             self.model = ImageClassifier(len(self.classes))
             self.model.load(self.train_output['model_path'])
         else:
