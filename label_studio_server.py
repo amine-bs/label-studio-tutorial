@@ -99,7 +99,8 @@ class ImageClassifier(object):
         if path:
             self.model = import_model(self.model, path)
         self.model.to(device)
-    
+        self.optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0001)
+   
     def save(self, path):
         torch.save(self.model.state_dict(), path)
         
@@ -117,7 +118,6 @@ class ImageClassifier(object):
     def train(self, dataloader, num_epochs=5, lr=0.001, momentum=0.9, weight_decay=0.0001):
         self.model.train()
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(self.model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
         for epoch in range(num_epochs):
             print('Epoch {}/{}'.format(epoch, num_epochs - 1))
             print('-' * 10)
@@ -129,12 +129,12 @@ class ImageClassifier(object):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
                 outputs = self.model(inputs)
                 _, preds = torch.max(outputs, 1)
                 loss = criterion(outputs, labels)
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
 
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
